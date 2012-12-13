@@ -2,12 +2,23 @@ require 'active_record'
 require 'ar_after_transaction/version'
 
 module ARAfterTransaction
+  def self.included(base)
+    base.extend ClassMethods
+    base.send :include, InstanceMethods
+
+    base.class_eval do
+      class << self
+        alias_method_chain :transaction, :callback_support
+      end
+    end
+  end
+
   module ClassMethods
     @@after_transaction_callbacks = []
 
-    def transaction(*args, &block)
+    def transaction_with_callback_support(*args, &block)
       clean = true
-      super
+      transaction_without_callback_support(*args, &block)
     rescue Exception
       clean = false
       raise
@@ -54,5 +65,4 @@ module ARAfterTransaction
   end
 end
 
-ActiveRecord::Base.send(:extend, ARAfterTransaction::ClassMethods)
-ActiveRecord::Base.send(:include, ARAfterTransaction::InstanceMethods)
+ActiveRecord::Base.send(:include, ARAfterTransaction)
