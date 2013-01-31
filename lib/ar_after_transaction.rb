@@ -14,7 +14,7 @@ module ARAfterTransaction
   end
 
   module ClassMethods
-    @@after_transaction_callbacks = []
+    @@after_transaction_callbacks = {}
 
     def transaction_with_callback_support(*args, &block)
       clean = true
@@ -29,9 +29,9 @@ module ARAfterTransaction
       end
     end
 
-    def after_transaction(&block)
+    def after_transaction &callback
       if transactions_open?
-        @@after_transaction_callbacks << block
+        add_after_transaction_callback callback
       else
         yield
       end
@@ -47,13 +47,22 @@ module ARAfterTransaction
 
     private
 
+    def database_name
+      connection.instance_variable_get(:@config)[:database]
+    end
+
     def transactions_open?
       connection.open_transactions > normally_open_transactions
     end
 
+    def add_after_transaction_callback block
+      @@after_transaction_callbacks[database_name] ||= []
+      @@after_transaction_callbacks[database_name] << block
+    end
+
     def delete_after_transaction_callbacks
-      result = @@after_transaction_callbacks
-      @@after_transaction_callbacks = []
+      result = @@after_transaction_callbacks[database_name] || []
+      @@after_transaction_callbacks[database_name] = []
       result
     end
   end
